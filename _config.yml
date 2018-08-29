@@ -1,7 +1,7 @@
 # Jekyll configuration
 
-name: Blog Name
-description: Software Developer
+name: Sumeyye Kolemen
+description: 
 
 # Url is currently only used only for the RSS feed in feed.xml
 url: https://sumeyyekolemen.github.io/
@@ -14,12 +14,12 @@ author: Pavel Makhov
 copyright: 2015-2018
 
 share:
-  facebook: true
+  facebook: false
   twitter: true
-  gplus: true
+  gplus: false
   linkedin: true
-  pinterest: true
-  email: true
+  pinterest: false
+  email: false
 
 social:
   github: streetturtle
