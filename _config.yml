@@ -29,7 +29,7 @@ social:
   instagram: ''
   lastfm: ''
   rss: feed.xml
-  twitter:https://twitter.com/smyyklmn
+  twitter: 'https://twitter.com/smyyklmn'
 
 # Google Analytics key, leave blank to ignore
 google_analytics_key:
