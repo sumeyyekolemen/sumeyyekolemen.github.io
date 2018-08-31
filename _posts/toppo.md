@@ -1,0 +1,72 @@
+# TOPPO V1
+
+
+Aynı yerel ağda bulunduğumuz Toppo makinesinin ip adresini bulmak için yerel ağı tarayan aşağıda ki komutlardan herhangi birini kullanabiliriz.
+
+1.) `arp-scan --localnet`
+2.) `netdiscover`
+
+Hedef ip= 10.5.40.167 olarak bulundu (sizlerde farklı olacaktır.)
+
+Öncelikle hangi portlar açık kontrol etmek çok basit bir nmap taraması yaparak başlayalım gerekirse ilerleyen aşama daha detaylı bir nmap taraması yapabiliriz.
+
+![nmap](nmap.png)
+
+Burada ilk gözüme çarpan http portu olduğu için direkt web sayfasına yöneliyorum.
+
+![webpage](web.png)
+
+Bir bootstrap sayfası ile karşılaştık contact menüsüne girdiğimizde kullanıcı bilgileri ve bir mesaj bırakabiliyoruz rastgele bilgiler girip send dediğimde mesaji başarılı bir şekilde gönderdi. Arkada bir yönetim menüsü olduğunu düşünüyorum devam etmeden önce sayfayı nikto ve dirb ile tarayalım.
+
+![nikto](nikto.png)
+
+Evet nikto ile aldığımız sonuclara göre bir admin dizini olduğunu gördük aynı şekilde aşağıda dirb araçı ilede diğer dizinlere ulaştık.
+
+![dirb](dirb.png)
+
+Evet admin dizinine gittiğimizde bir ipcu elde etmiş olabiliriz devam ediyoruz.
+
+![admin](admin.png)
+
+Kesinlikle! Artık elimizde bir parola var ve aslında içinde muhtemel kullanıcı adınıda barındırıyor.
+
+![notes](notes.png)
+
+22 ssh portu da açık olduğuna göre paralonın ssh parolası olduğunu düşünüp deneme yaparsak (parolaya baktığımızda kullanıcı adının ted olduğunu düşünüyorum.)
+
+![ssh](ssh.png)
+
+Tahmin ettiğimiz gibi ssh ile ted kullanıcısı adına bağlantı sağlamış olduk.
+
+Şimdi biraz araştırma yapmamız lazım genellikle önce yetkili olduğum dosyaları bulmaya çalışırım; çalıştırabildiğim veya yazabildiğim gibi yada belki bir ipucu bırakmışlardı umudu ile dizinler arasında gezindikten sonra google'dan linux post-exploitation yöntemlerini inceledim.
+
+Kullandığım link --> https://payatu.com/guide-linux-privilege-escalation/
+
+sırayla incelerken SUID bit kontrolune denk geldim aslında kendim şu komut ile kontrol etmiştim;
+
+`find / -perm 4000 >dev/null 2>&1`
+
+birşey çıkmamıştı (çünkü yanlış yapmışım dikkate almayın) buradaki komutuda tekrar denetikten sonra SUID bit bulunan birkaç dosyaya denk geldim.
+
+`find / -perm -u=s -type -f 2>/dev/null`
+
+Note: SUID bit ile ilgili linkten detaylı bilgi alabilirsiniz.
+
+link ---> https://pentestlab.blog/2017/09/25/suid-executables/
+
+![suid](find.png)
+
+Ben burada ilk baktığımda /usr/bin/passwd 'ye odaklanmıştım fakat yaptığım bazı denemeler sonucunda birşey elde edemeyince listeye tekrar göz gezdirdim ve python'a yöneldim. python'da s bitinin olması demek ben bir kod yazdığımda aslında root yetkileri ile çalıştırıyorum demek bu nedenle hemen google'ın da yardımını alarak python2.7 versiyonda /bin/sh komutunu nasıl çalıştırabilirimi buldum ve denedim.
+
+komut satırına sırası ile :
+`python2.7`
+`import subprocess`
+`subprocess.call("/bin/sh")`
+
+![pythonkod](python.png)
+
+YESS!! bu şekilde bulmamız gereken flag'e ulaşmış oluyoruz.
+
+![root](root.png)
+
+Son olarak muhtemelen /usr/bin/passwd 'yi kullanarakta flag'e erişim sağlayabiliriz.
